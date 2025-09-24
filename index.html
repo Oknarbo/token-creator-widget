@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Creator Widget</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔑 Token Creator Widget</h1>
+            <p>Kreirajte i upravljajte Solana tokenima</p>
+        </header>
+
+        <main>
+            <!-- Network Selection -->
+            <div class="section">
+                <h3>🌐 Network Selection</h3>
+                <div class="network-controls">
+                    <div class="network-buttons">
+                        <button class="network-btn active" data-network="devnet">
+                            <span class="network-icon">🟢</span>
+                            <span class="network-name">Devnet</span>
+                            <span class="network-desc">Test Environment</span>
+                        </button>
+                        <button class="network-btn" data-network="testnet">
+                            <span class="network-icon">🟡</span>
+                            <span class="network-name">Testnet</span>
+                            <span class="network-desc">Testing Network</span>
+                        </button>
+                        <button class="network-btn" data-network="mainnet">
+                            <span class="network-icon">🔴</span>
+                            <span class="network-name">Mainnet</span>
+                            <span class="network-desc">Production Network</span>
+                        </button>
+                    </div>
+                    
+                    <div class="network-status">
+                        <div class="current-network">
+                            <strong>Current Network:</strong>
+                            <span id="currentNetworkDisplay" class="network-badge devnet">Devnet</span>
+                        </div>
+                        <div class="network-info">
+                            <span id="rpcEndpoint" class="rpc-info">RPC: api.devnet.solana.com</span>
+                            <span id="networkStatus" class="status-indicator online">🟢 Online</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Network Warning -->
+                <div id="networkWarning" class="network-warning" style="display: none;">
+                    <div class="warning-content">
+                        <span class="warning-icon">⚠️</span>
+                        <div class="warning-text">
+                            <strong>Network Switch Warning:</strong>
+                            <p>Switching to <span id="targetNetwork"></span> will change your RPC endpoint and may affect token availability. Your wallet address remains the same.</p>
+                        </div>
+                        <div class="warning-actions">
+                            <button id="confirmNetworkSwitch" class="btn btn-primary">Confirm Switch</button>
+                            <button id="cancelNetworkSwitch" class="btn btn-secondary">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Helius API Configuration -->
+            <div class="section">
+                <h3>🔑 Helius API Konfiguracija</h3>
+                <div class="form-group">
+                    <label for="heliusApiKey">Helius API Key:</label>
+                    <input type="password" id="heliusApiKey" placeholder="Unesite vaš Helius API key">
+                    <small class="help-text">Potreban za mainnet operacije</small>
+                </div>
+                <div class="api-status">
+                    <span class="label">API Status:</span>
+                    <span id="apiStatus" class="value">Provjeri...</span>
+                </div>
+            </div>
+
+            <!-- Wallet Section -->
+            <div class="section">
+                <h3>💼 Wallet Management</h3>
+                <div class="wallet-controls">
+                    <button id="createWalletBtn" class="btn btn-primary">Create New Wallet</button>
+                    <button id="loadWalletBtn" class="btn btn-secondary">Load Existing Wallet</button>
+                    <button id="checkPythonScriptsBtn" class="btn btn-info">Check Python Scripts</button>
+                    <button id="copyWalletScriptsBtn" class="btn btn-warning">Copy Wallet Scripts</button>
+                </div>
+                
+                <!-- Wallet Selector Dropdown -->
+                <div class="wallet-selector">
+                    <label for="walletSelect">Select Wallet:</label>
+                    <select id="walletSelect" class="form-control">
+                        <option value="">-- Select a wallet --</option>
+                    </select>
+                </div>
+                
+                <div class="wallet-info">
+                    <div class="wallet-display">
+                        <p><strong>Public Key:</strong> <span id="publicKey">Not loaded</span></p>
+                        <p><strong>Private Key:</strong>
+                            <span id="privateKey" style="word-break: break-all; font-family: monospace; background: #f8f9fa; padding: 5px; border-radius: 3px; display: inline-block; max-width: 100%;">Not loaded</span>
+                            <button id="copyPrivateKeyBtn" class="btn btn-sm btn-info" style="margin-left: 10px;">Copy</button>
+                        </p>
+                        <p><strong>Balance:</strong> <span id="walletBalance">0 SOL</span></p>
+                        <p><strong>Network:</strong> <span id="walletNetwork">devnet</span></p>
+                    </div>
+                    <button id="refreshBalanceBtn" class="btn btn-sm btn-secondary">Refresh Balance</button>
+                    <button id="togglePrivateKeyBtn" class="btn btn-sm btn-warning">Show/Hide Private Key</button>
+                </div>
+            </div>
+
+            <!-- Token Creation -->
+            <section class="token-section">
+                <h2>🪙 Kreiranje tokena</h2>
+                
+                <!-- DEX Selection -->
+                <div class="dex-selection">
+                    <h3>🏦 Odabir DEX-a</h3>
+                    <div class="dex-buttons">
+                        <button class="dex-btn active" data-dex="raydium">Raydium</button>
+                        <button class="dex-btn" data-dex="orca">Orca</button>
+                    </div>
+                    <div class="current-dex">
+                        Odabrani DEX: <span id="currentDex">raydium</span>
+                    </div>
+                </div>
+                
+                <div class="token-form">
+                    <div class="form-group">
+                        <label for="tokenName">Naziv tokena:</label>
+                        <input type="text" id="tokenName" placeholder="Unesite naziv tokena">
+                    </div>
+                    <div class="form-group">
+                        <label for="tokenSymbol">Simbol:</label>
+                        <input type="text" id="tokenSymbol" placeholder="Unesite simbol (npr. ABC)">
+                    </div>
+                    <div class="form-group">
+                        <label for="tokenDecimals">Decimali:</label>
+                        <input type="number" id="tokenDecimals" value="9" min="0" max="9">
+                    </div>
+                    <div class="form-group">
+                        <label for="tokenSupply">Ukupna ponuda:</label>
+                        <input type="number" id="tokenSupply" value="1000000000" min="1">
+                    </div>
+                    
+                    <!-- Token Metadata -->
+                    <div class="metadata-section">
+                        <h3>📝 Metapodaci</h3>
+                        <!-- Metadata inputs -->
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tokenDescription">Opis:</label>
+                                <textarea id="tokenDescription" placeholder="Opis token-a" class="form-control" rows="3"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="tokenImage">Slika token-a:</label>
+                                <div class="image-input-container">
+                                    <input type="text" id="tokenImage" placeholder="URL slike ili odaberite datoteku" class="form-control">
+                                    <button type="button" id="uploadImageBtn" class="btn btn-secondary">📁 Upload Image</button>
+                                    <input type="file" id="imageFileInput" accept="image/*" style="display: none;">
+                                </div>
+                                <small class="help-text">Unesite URL slike ili odaberite datoteku s vašeg kompjutora</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="tokenWebsite">Website:</label>
+                                <input type="url" id="tokenWebsite" placeholder="https://example.com" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="tokenTwitter">Twitter:</label>
+                            <input type="url" id="tokenTwitter" placeholder="https://twitter.com/username">
+                        </div>
+                        <div class="form-group">
+                            <label for="tokenTelegram">Telegram:</label>
+                            <input type="url" id="tokenTelegram" placeholder="https://t.me/username">
+                        </div>
+                    </div>
+                    
+                    <button id="createTokenBtn" class="btn btn-success">🚀 Kreiraj token</button>
+                </div>
+            </section>
+
+            <!-- DEXScreener Integration -->
+            <section class="dexscreener-section">
+                <h2>📊 DEXScreener integracija</h2>
+                <div class="dexscreener-controls">
+                    <div class="token-input-group">
+                        <label for="tokenAddressInput">Token adresa:</label>
+                        <input type="text" id="tokenAddressInput" placeholder="Unesite Solana token adresu">
+                        <button id="loadDEXScreenerBtn" class="btn btn-primary">Učitaj DEXScreener</button>
+                    </div>
+                    <div class="timeframe-buttons">
+                        <button class="timeframe-btn active" data-timeframe="1m">1m</button>
+                        <button class="timeframe-btn" data-timeframe="5m">5m</button>
+                        <button class="timeframe-btn" data-timeframe="15m">15m</button>
+                        <button class="timeframe-btn" data-timeframe="30m">30m</button>
+                        <button class="timeframe-btn" data-timeframe="1h">1h</button>
+                        <button class="timeframe-btn" data-timeframe="4h">4h</button>
+                        <button class="timeframe-btn" data-timeframe="1d">1d</button>
+                        <button class="timeframe-btn" data-timeframe="1w">1w</button>
+                    </div>
+                </div>
+                <div class="dexscreener-info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Cijena:</span>
+                            <span id="currentPrice" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">24h promjena:</span>
+                            <span id="priceChange24h" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Market Cap:</span>
+                            <span id="marketCap" class="info-value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Volume 24h:</span>
+                            <span id="volume24h" class="info-value">-</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="dexscreener-actions">
+                    <button id="openChartBtn" class="btn btn-primary">📊 Otvori grafikon</button>
+                    <button id="openDEXScreenerBtn" class="btn btn-secondary">🌐 Otvori u DEXScreener</button>
+                    <button id="testIframeBtn" class="btn btn-info">🧪 Test Iframe</button>
+                </div>
+                
+                <!-- DEXScreener Chart Container -->
+                <div class="dexscreener-chart-container" id="dexscreenerChartContainer" style="display: none;">
+                    <div class="chart-header">
+                        <h3>📊 DEXScreener Grafikon</h3>
+                        <button class="close-chart-btn" id="closeChartBtn">✕</button>
+                    </div>
+                    <div class="chart-timeframe-controls">
+                        <button class="timeframe-btn-chart active" data-timeframe="1m">1m</button>
+                        <button class="timeframe-btn-chart" data-timeframe="5m">5m</button>
+                        <button class="timeframe-btn-chart" data-timeframe="15m">15m</button>
+                        <button class="timeframe-btn-chart" data-timeframe="30m">30m</button>
+                        <button class="timeframe-btn-chart" data-timeframe="1h">1h</button>
+                        <button class="timeframe-btn-chart" data-timeframe="4h">4h</button>
+                        <button class="timeframe-btn-chart" data-timeframe="1d">1d</button>
+                        <button class="timeframe-btn-chart" data-timeframe="1w">1w</button>
+                    </div>
+                    <div class="chart-iframe-container">
+                        <iframe id="dexscreenerIframe" 
+                                src="about:blank"
+                                frameborder="0" 
+                                allowfullscreen>
+                        </iframe>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Liquidity Management -->
+            <div class="section">
+                <h3>💧 Liquidity Management</h3>
+                
+                <!-- Liquidity Configuration -->
+                <div class="liquidity-config">
+                    <h4>📊 Liquidity Configuration</h4>
+                    <div class="liquidity-inputs">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="liquidityAmount">Količina likvidnosti:</label>
+                                <input type="number" id="liquidityAmount" min="0.1" step="0.1" value="1.0" class="form-control">
+                                <small class="help-text">Unesite količinu koju želite dodati</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="liquidityCurrency">Valuta:</label>
+                                <select id="liquidityCurrency" class="form-control">
+                                    <option value="SOL">SOL</option>
+                                    <option value="USDC">USDC</option>
+                                    <option value="USDT">USDT</option>
+                                </select>
+                                <small class="help-text">Odaberite valutu za likvidnost</small>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="liquidityTokenRatio">Token Ratio:</label>
+                                <input type="number" id="liquidityTokenRatio" min="0.1" step="0.1" value="1.0" class="form-control">
+                                <small class="help-text">Omjer token-a prema valuti</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="liquiditySlippage">Slippage (%):</label>
+                                <input type="number" id="liquiditySlippage" min="0.1" max="10" step="0.1" value="1.0" class="form-control">
+                                <small class="help-text">Maksimalni slippage za transakciju</small>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="liquidityLockPercentage">Lock Percentage (%):</label>
+                                <input type="number" id="liquidityLockPercentage" min="0" max="100" step="1" value="50" class="form-control">
+                                <small class="help-text">Postotak likvidnosti koji će biti zaključan</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="liquidityLockDuration">Lock Duration (dana):</label>
+                                <input type="number" id="liquidityLockDuration" min="1" max="365" step="1" value="30" class="form-control">
+                                <small class="help-text">Trajanje zaključavanja u danima</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Auto-Buy Configuration -->
+                        <div class="form-row auto-buy-config">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enableAutoBuy" class="form-checkbox">
+                                    🚀 Enable Auto-Buy
+                                </label>
+                                <small class="help-text">Automatski kupi token sa svih novčanika kada dodate likvidnost</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="autoBuyAmount">Auto-Buy Amount (SOL):</label>
+                                <input type="number" id="autoBuyAmount" min="0.01" step="0.01" value="0.1" class="form-control" disabled>
+                                <small class="help-text">Količina SOL-a koju će svaki novčanik potrošiti na kupnju</small>
+                            </div>
+                        </div>
+                        
+                        <!-- Real Auto-Buy Configuration -->
+                        <div class="form-row real-auto-buy-config">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="enableRealAutoBuy" class="form-checkbox">
+                                    ⚡ Enable Real Auto-Buy (BLOCKCHAIN)
+                                </label>
+                                <small class="help-text">Stvarni auto-buy na blockchain-u kada se kreira token</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="realAutoBuyAmount">Real Auto-Buy Amount (SOL):</label>
+                                <input type="number" id="realAutoBuyAmount" min="0.01" step="0.01" value="0.1" class="form-control">
+                                <small class="help-text">Količina SOL-a koju svaki wallet troši na stvarni auto-buy</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="realAutoBuySlippage">Slippage (%):</label>
+                                <input type="number" id="realAutoBuySlippage" min="0.1" step="0.1" value="0.5" max="10" class="form-control">
+                                <small class="help-text">Maksimalna dozvoljena slippage za stvarne transakcije</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Liquidity Preview -->
+                <div class="liquidity-preview">
+                    <h5>📋 Liquidity Preview</h5>
+                    <div class="preview-grid">
+                        <div class="preview-item">
+                            <span class="label">Token Amount:</span>
+                            <span id="previewTokenAmount" class="value">0 TOKEN</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="label">Currency Amount:</span>
+                            <span id="previewCurrencyAmount" class="value">0 SOL</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="label">Total Value:</span>
+                            <span id="previewTotalValue" class="value">$0.00</span>
+                        </div>
+                        <div class="preview-item">
+                            <span class="label">Locked Amount:</span>
+                            <span id="previewLockedAmount" class="value">0 SOL</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="liquidity-controls">
+                    <div class="form-group">
+                        <label for="tokenAddressLiquidity">Token Address:</label>
+                        <input type="text" id="tokenAddressLiquidity" placeholder="Token Address" class="form-control">
+                        <small class="help-text">Unesite adresu token-a za upravljanje likvidnošću</small>
+                    </div>
+                    <button id="addLiquidityBtn" class="btn btn-success">Add Liquidity</button>
+                    <button id="removeLiquidityBtn" class="btn btn-warning">Remove Liquidity</button>
+                    <button id="lockLiquidityBtn" class="btn btn-info">Lock Liquidity</button>
+                    <button id="unlockLiquidityBtn" class="btn btn-secondary">Unlock Liquidity</button>
+                </div>
+                
+                <!-- Token Trading Controls -->
+                <div class="trading-controls">
+                    <h4>💰 Token Trading</h4>
+                    <div class="trading-buttons">
+                        <button id="sellAllWalletsBtn" class="btn btn-danger">🔥 Sell All Wallets</button>
+                        <button id="sellIndividualBtn" class="btn btn-warning">📊 Sell Individual Wallet</button>
+                        <button id="buyTokenBtn" class="btn btn-success">💎 Buy Token</button>
+                    </div>
+                    
+                    <!-- Individual Wallet Sell Configuration -->
+                    <div class="individual-sell-config" id="individualSellConfig" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="sellWalletSelect">Odaberite novčanik:</label>
+                                <select id="sellWalletSelect" class="form-control">
+                                    <option value="">Odaberite novčanik...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="sellAmount">Količina za prodaju:</label>
+                                <input type="number" id="sellAmount" min="0.000001" step="0.000001" placeholder="0.000000" class="form-control">
+                                <small class="help-text">Unesite količinu token-a koju želite prodati</small>
+                            </div>
+                        </div>
+                        <button id="confirmSellBtn" class="btn btn-danger">💸 Confirm Sell</button>
+                    </div>
+                </div>
+                
+                <div class="liquidity-info">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="label">Token Supply:</span>
+                            <span id="tokenSupplyInfo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Liquidity Pool:</span>
+                            <span id="liquidityPoolInfo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Locked Liquidity:</span>
+                            <span id="lockedLiquidityInfo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Lock End Date:</span>
+                            <span id="lockEndDateInfo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Token Status:</span>
+                            <span id="tokenStatusInfo" class="value">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Freeze Authority:</span>
+                            <span id="freezeAuthorityInfo" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="token-controls">
+                    <button id="freezeTokenBtn" class="btn btn-danger">Freeze Token</button>
+                    <button id="unfreezeTokenBtn" class="btn btn-success">Unfreeze Token</button>
+                    <button id="setMutableBtn" class="btn btn-warning">Set Mutable</button>
+                    <button id="setImmutableBtn" class="btn btn-info">Set Immutable</button>
+                </div>
+            </div>
+
+            <!-- Trailing Stop Loss -->
+            <div class="section">
+                <h3>🎯 Trailing Stop Loss</h3>
+                
+                <!-- Global vs Individual Settings -->
+                <div class="stop-loss-mode-selector">
+                    <div class="mode-buttons">
+                        <button class="mode-btn active" data-mode="global">🌍 Global Settings</button>
+                        <button class="mode-btn" data-mode="individual">👤 Individual Wallet Settings</button>
+                    </div>
+                </div>
+                
+                <!-- Global Trailing Stop Settings -->
+                <div class="global-stop-settings" id="globalStopSettings">
+                    <h4>🌍 Global Trailing Stop (Svi novčanici)</h4>
+                    <div class="trailing-stop-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="trailingTokenAddress">Token Address:</label>
+                                <input type="text" id="trailingTokenAddress" placeholder="Enter token address" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="trailingPercent">Trailing Percentage (%):</label>
+                                <input type="number" id="trailingPercent" min="0.1" max="50" step="0.1" value="5" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="trailingAmount">Amount to Sell:</label>
+                                <input type="number" id="trailingAmount" min="0.000001" step="0.000001" placeholder="0.000000" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="trailingEntryPrice">Entry Price (USD):</label>
+                                <input type="number" id="trailingEntryPrice" min="0.000001" step="0.000001" placeholder="0.000000" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="trailingMaxLoss">Max Loss (%):</label>
+                                <input type="number" id="trailingMaxLoss" min="1" max="100" step="1" value="20" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="trailingTakeProfit">Take Profit (%):</label>
+                                <input type="number" id="trailingTakeProfit" min="1" max="1000" step="1" value="100" class="form-control">
+                            </div>
+                        </div>
+                        <button id="setGlobalTrailingStopBtn" class="btn btn-primary">🚀 Set Global Trailing Stop</button>
+                    </div>
+                </div>
+                
+                <!-- Individual Wallet Trailing Stop Settings -->
+                <div class="individual-stop-settings" id="individualStopSettings" style="display: none;">
+                    <h4>👤 Individual Wallet Trailing Stop</h4>
+                    <div class="wallet-stop-config">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="individualWalletSelect">Odaberite novčanik:</label>
+                                <select id="individualWalletSelect" class="form-control">
+                                    <option value="">Odaberite novčanik...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="individualTokenAddress">Token Address:</label>
+                                <input type="text" id="individualTokenAddress" placeholder="Enter token address" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="individualTrailingPercent">Trailing Percentage (%):</label>
+                                <input type="number" id="individualTrailingPercent" min="0.1" max="50" step="0.1" value="5" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="individualTrailingAmount">Amount to Sell:</label>
+                                <input type="number" id="individualTrailingAmount" min="0.000001" step="0.000001" placeholder="0.000000" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="individualEntryPrice">Entry Price (USD):</label>
+                                <input type="number" id="individualEntryPrice" min="0.000001" step="0.000001" placeholder="0.000000" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="individualMaxLoss">Max Loss (%):</label>
+                                <input type="number" id="individualMaxLoss" min="1" max="100" step="1" value="20" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="individualTakeProfit">Take Profit (%):</label>
+                                <input type="number" id="individualTakeProfit" min="1" max="1000" step="1" value="100" class="form-control">
+                            </div>
+                            <div class="form-group">
+                                <label for="individualStopLoss">Stop Loss (%):</label>
+                                <input type="number" id="individualStopLoss" min="1" max="100" step="1" value="15" class="form-control">
+                            </div>
+                        </div>
+                        <button id="setIndividualTrailingStopBtn" class="btn btn-primary">🎯 Set Individual Trailing Stop</button>
+                    </div>
+                </div>
+                
+                <!-- Active Trailing Stops -->
+                <div class="active-trailing-stops">
+                    <h4>📈 Active Trailing Stops</h4>
+                    <div id="trailingStopsList" class="trailing-stops-container">
+                        <!-- Trailing stops will be populated here -->
+                    </div>
+                </div>
+                
+                <!-- Trailing Stop History -->
+                <div class="trailing-stop-history">
+                    <h4>📋 Trailing Stop History</h4>
+                    <div id="trailingStopsHistory" class="trailing-history-container">
+                        <!-- History will be populated here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Token Management -->
+            <div class="section">
+                <h3>📋 Token Management</h3>
+                <div class="token-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Ukupno kreiranih tokena:</span>
+                        <span class="stat-value" id="tokenCount">0</span>
+                    </div>
+                </div>
+                
+                <div class="token-actions">
+                    <button id="exportTokensBtn" class="btn btn-success">📁 Export Tokens</button>
+                    <button id="clearTokensBtn" class="btn btn-danger">🗑️ Clear All Tokens</button>
+                    <button id="refreshTokensBtn" class="btn btn-info">🔄 Refresh Token List</button>
+                </div>
+                
+                <div class="stored-tokens-list" id="storedTokensList">
+                    <!-- Stored tokens will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Python Integration Status -->
+            <section class="python-section">
+                <h2>🐍 Python integracija</h2>
+                <div class="python-status">
+                    <div class="status-item">
+                        <span class="label">Python skripte:</span>
+                        <span id="pythonScriptsStatus" class="value">Provjeri...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">Python Bridge:</span>
+                        <span id="pythonBridgeStatus" class="value">Provjeri...</span>
+                    </div>
+                </div>
+                <div class="python-controls">
+                    <button id="checkPythonScriptsBtn" class="btn btn-warning">Provjeri Python skripte</button>
+                    <button id="copyWalletScriptsBtn" class="btn btn-success">Kopiraj wallet skripte</button>
+                </div>
+                <div class="available-scripts">
+                    <span class="label">Dostupne skripte:</span>
+                    <div id="availableScripts" class="scripts-list">Provjeri...</div>
+                </div>
+            </section>
+
+            <!-- Log Section -->
+            <section class="log-section">
+                <h2>📝 Log</h2>
+                <div id="logContainer" class="log-container">
+                    <div class="log-entry info">🚀 Token Creator Widget pokrenut</div>
+                </div>
+                <div class="log-controls">
+                    <button id="clearLogBtn" class="btn btn-secondary">Obriši log</button>
+                    <button id="exportLogBtn" class="btn btn-info">Izvezi log</button>
+                </div>
+            </section>
+
+            <!-- Backup Management -->
+            <div class="section">
+                <h3>💾 Backup Management</h3>
+                <div class="backup-status-container">
+                    <div class="backup-status success" id="backupStatus">✅ Backup OK</div>
+                    <div class="backup-info">
+                        <span class="backup-label">Last Backup:</span>
+                        <span class="backup-time" id="lastBackupTime">Never</span>
+                    </div>
+                </div>
+                
+                <div class="backup-actions">
+                    <button id="manualBackupBtn" class="btn btn-primary">💾 Manual Backup</button>
+                    <button id="exportBackupBtn" class="btn btn-success">📁 Export Backup</button>
+                    <button id="importBackupBtn" class="btn btn-info">📂 Import Backup</button>
+                    <button id="viewBackupsBtn" class="btn btn-secondary">📋 View Backups</button>
+                </div>
+                
+                <div class="backup-info-details">
+                    <div class="info-item">
+                        <span class="info-label">Auto-backup:</span>
+                        <span class="info-value">Every 30 seconds</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Backup location:</span>
+                        <span class="info-value">data/ folder + localStorage</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Data included:</span>
+                        <span class="info-value">Wallets, Tokens, Config</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Backup files:</span>
+                        <span class="info-value" id="backupCount">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total size:</span>
+                        <span class="info-value" id="dataSize">0 KB</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Lock Liquidity Modal -->
+    <div id="lockLiquidityModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔒 Lock Liquidity</h3>
+                <span class="close" onclick="closeLockLiquidityModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="lockAmount">Količina za lock (u SOL):</label>
+                    <input type="number" id="lockAmount" placeholder="0.0" step="0.1" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="lockDuration">Trajanje lock-a:</label>
+                    <select id="lockDuration">
+                        <option value="30">30 dana</option>
+                        <option value="60">60 dana</option>
+                        <option value="90">90 dana</option>
+                        <option value="180">6 mjeseci</option>
+                        <option value="365">1 godina</option>
+                        <option value="730">2 godine</option>
+                        <option value="1095">3 godine</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group" id="customDurationGroup" style="display: none;">
+                    <label for="customDurationDays">Custom trajanje (dani):</label>
+                    <input type="number" id="customDurationDays" placeholder="Unesite broj dana" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="lockReason">Razlog lock-a:</label>
+                    <textarea id="lockReason" placeholder="Opišite razlog za lock liquidity (npr. 'Community trust building')" rows="3"></textarea>
+                </div>
+                <div class="lock-summary">
+                    <h4>📋 Lock Summary</h4>
+                    <div class="summary-item">
+                        <span>Količina:</span>
+                        <span id="lockSummaryAmount">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>Trajanje:</span>
+                        <span id="lockSummaryDuration">-</span>
+                    </div>
+                    <div class="summary-item">
+                        <span>End Date:</span>
+                        <span id="lockSummaryEndDate">-</span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="confirmLockBtn" class="btn btn-primary">🔒 Potvrdi Lock</button>
+                    <button onclick="closeLockLiquidityModal()" class="btn btn-secondary">❌ Odustani</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chart Modal -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📊 DEXScreener grafikon</h3>
+                <span class="close" onclick="closeChartModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="chart-controls">
+                    <div class="timeframe-buttons-modal">
+                        <button class="timeframe-btn-modal active" data-timeframe="1m">1m</button>
+                        <button class="timeframe-btn-modal" data-timeframe="5m">5m</button>
+                        <button class="timeframe-btn-modal" data-timeframe="15m">15m</button>
+                        <button class="timeframe-btn-modal" data-timeframe="30m">30m</button>
+                        <button class="timeframe-btn-modal" data-timeframe="1h">1h</button>
+                        <button class="timeframe-btn-modal" data-timeframe="4h">4h</button>
+                        <button class="timeframe-btn-modal" data-timeframe="1d">1d</button>
+                        <button class="timeframe-btn-modal" data-timeframe="1w">1w</button>
+                    </div>
+                </div>
+                <div id="chartContainer" class="chart-container">
+                    <iframe id="dexscreenerChart" src="about:blank" frameborder="0" width="100%" height="500"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <!-- Debug script to check localStorage -->
+    <script>
+        // Check localStorage for wallets
+        console.log('🔍 Checking localStorage for wallets...');
+        const storedWallets = localStorage.getItem('solanaWallets');
+        if (storedWallets) {
+            const wallets = JSON.parse(storedWallets);
+            console.log('💰 Found wallets in localStorage:', wallets);
+            
+            // Display wallets in console
+            wallets.forEach((wallet, index) => {
+                console.log(`Wallet ${index + 1}:`, {
+                    id: wallet.id,
+                    publicKey: wallet.publicKey,
+                    network: wallet.network,
+                    balance: wallet.balance
+                });
+            });
+        } else {
+            console.log('❌ No wallets found in localStorage');
+        }
+        
+        // Check if wallet selector exists and populate it
+        setTimeout(() => {
+            const walletSelect = document.getElementById('walletSelect');
+            if (walletSelect && storedWallets) {
+                const wallets = JSON.parse(storedWallets);
+                console.log('🔄 Populating wallet selector with', wallets.length, 'wallets');
+                
+                // Clear existing options
+                walletSelect.innerHTML = '<option value="">-- Select a wallet --</option>';
+                
+                // Add wallet options
+                wallets.forEach(wallet => {
+                    const option = document.createElement('option');
+                    option.value = wallet.id;
+                    option.textContent = `${wallet.publicKey} (${wallet.network})`;
+                    walletSelect.appendChild(option);
+                });
+                
+                // Show wallet selector
+                const walletSelector = document.querySelector('.wallet-selector');
+                if (walletSelector) {
+                    walletSelector.style.display = 'block';
+                }
+            }
+        }, 1000);
+    </script>
+</body>
+</html>
