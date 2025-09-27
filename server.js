@@ -211,6 +211,63 @@ app.get('/api/tokens', (req, res) => {
     }
 });
 
+// Input validation function
+function validateInput(value, type) {
+    if (!value || typeof value !== 'string') {
+        throw new Error('Invalid input: empty or non-string value');
+    }
+    
+    // Remove potentially dangerous characters
+    const sanitized = value
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+        .replace(/javascript:/gi, '')
+        .replace(/[<>]/g, '')
+        .replace(/['"]/g, '')
+        .replace(/[;|&]/g, '') // Command injection protection
+        .replace(/\.\./g, '') // Path traversal protection
+        .replace(/--/g, '')
+        .trim();
+    
+    // Type-specific validation
+    switch(type) {
+        case 'tokenName':
+            if (sanitized.length > 50) throw new Error('Token name too long');
+            if (!/^[a-zA-Z0-9\s]+$/.test(sanitized)) throw new Error('Invalid characters in token name');
+            break;
+        case 'tokenSymbol':
+            if (sanitized.length > 10) throw new Error('Token symbol too long');
+            if (!/^[A-Z0-9]+$/.test(sanitized)) throw new Error('Invalid token symbol format');
+            break;
+        case 'network':
+            if (!['devnet', 'testnet', 'mainnet-beta'].includes(sanitized)) {
+                throw new Error('Invalid network');
+            }
+            break;
+    }
+    
+    return sanitized;
+}
+
+// Secure error response function
+function sendSecureError(res, error, statusCode = 500) {
+    // Sanitize error message for production
+    let sanitizedMessage = 'Internal server error';
+    
+    if (process.env.NODE_ENV === 'development') {
+        // In development, show more details but still sanitized
+        sanitizedMessage = error.message
+            .replace(/[C-Z]:\\[^\s]*/g, '[PATH]')
+            .replace(/\/[^\s]*/g, '[PATH]')
+            .substring(0, 100);
+    }
+    
+    log(`Error: ${error.message}`, 'error');
+    res.status(statusCode).json({
+        success: false,
+        error: sanitizedMessage
+    });
+}
+
 // Python script execution endpoints
 console.log('🔧 Registering Python API endpoints...');
 
@@ -400,32 +457,64 @@ app.post('/api/python/load-wallet', (req, res) => {
 
 // Create token endpoint
 app.post('/api/python/create-token', (req, res) => {
-    const {
-        privateKey,
-        network = 'devnet',
-        tokenName,
-        tokenSymbol,
-        totalSupply,
-        decimals = 9
-    } = req.body;
+    try {
+        const {
+            privateKey,
+            network = 'devnet',
+            tokenName,
+            tokenSymbol,
+            totalSupply,
+            decimals = 9
+        } = req.body;
 
-    if (!privateKey || !tokenName || !tokenSymbol || !totalSupply) {
-        return res.status(400).json({
-            success: false,
-            error: 'Missing required parameters: privateKey, tokenName, tokenSymbol, totalSupply'
-        });
-    }
+        if (!privateKey || !tokenName || !tokenSymbol || !totalSupply) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required parameters'
+            });
+        }
 
-    console.log(`🐍 Executing create_token.py for ${tokenName} (${tokenSymbol})`);
+        // Validate and sanitize inputs
+        const sanitizedTokenName = validateInput(tokenName, 'tokenName');
+        const sanitizedTokenSymbol = validateInput(tokenSymbol, 'tokenSymbol');
+        const sanitizedNetwork = validateInput(network, 'network');
+        
+        // Validate private key format (basic check)
+        if (typeof privateKey !== 'string' || privateKey.length < 20 || privateKey.length > 100) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid private key format'
+            });
+        }
+        
+        // Validate numeric inputs
+        const numericSupply = parseInt(totalSupply);
+        const numericDecimals = parseInt(decimals);
+        
+        if (isNaN(numericSupply) || numericSupply <= 0 || numericSupply > 1e15) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid total supply'
+            });
+        }
+        
+        if (isNaN(numericDecimals) || numericDecimals < 0 || numericDecimals > 18) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid decimals'
+            });
+        }
 
-    const pythonProcess = spawn('python', [
-        path.join(__dirname, 'python_scripts', 'create_token.py'),
+        console.log(`🐍 Executing create_token.py for ${sanitizedTokenName} (${sanitizedTokenSymbol})`);
+
+        const pythonProcess = spawn('python', [
+            path.join(__dirname, 'python_scripts', 'create_token.py'),
         '--privateKey', privateKey,
-        '--network', network,
-        '--tokenName', tokenName,
-        '--tokenSymbol', tokenSymbol,
-        '--totalSupply', totalSupply.toString(),
-        '--decimals', decimals.toString()
+        '--network', sanitizedNetwork,
+        '--tokenName', sanitizedTokenName,
+        '--tokenSymbol', sanitizedTokenSymbol,
+        '--totalSupply', numericSupply.toString(),
+        '--decimals', numericDecimals.toString()
     ], {
         cwd: __dirname,
         stdio: ['pipe', 'pipe', 'pipe']
@@ -474,6 +563,10 @@ app.post('/api/python/create-token', (req, res) => {
             error: `Failed to execute Python script: ${error.message}`
         });
     });
+    
+    } catch (error) {
+        sendSecureError(res, error, 400);
+    }
 });
 
 // Get server logs
